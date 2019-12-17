@@ -63,11 +63,15 @@ extern "C" {
 #define BATTERY_ADCCHAN (ADC_CHANNEL_VREFINT)
 
 // ALtimetre I2C chan/addr
+// W_PROTO altimeter is a Freescale MPL3115A2
+#define ALTI_MPL3115A2 1
 #define ALTIMETER_I2C_CHAN 0
 #define ALTIMETER_I2C_ADDR 0x5D
 // accelerometer I2C chan/addr
+// W_PROTO acceleromter is a Freescale MMA7660FCR1 
+#define ACC_MMA7660FCR1 1
 #define ACCELERO_I2C_CHAN  0
-// Default I2C addres for ST lis2de12 is 0x18, our board pulls SA0 (which is the LSB) high -> 0x19
+// Default I2C addres for accelero is 0x18, our board pulls SA0 (which is the LSB) high -> 0x19
 #define ACCELERO_I2C_ADDR  0x19
 
 //#define Microphone IIS config?
