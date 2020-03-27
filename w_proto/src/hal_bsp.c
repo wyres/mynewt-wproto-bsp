@@ -79,34 +79,27 @@
 
 #include "bsp/bsp.h"
 
-// Uart0 is UART1 in STM32 doc hence names of HAL defns
+extern void hal_mcu_halt();  
+
+/* Uart0 is UART1 in STM32 doc hence names of HAL defns */
 #if MYNEWT_VAL(UART_0)
 static struct uart_dev hal_uart0;
 
-static const struct stm32_uart_cfg uart_cfg[UART_CNT] = {
-    [0] = {
+static const struct stm32_uart_cfg os_bsp_uart0_cfg = {
         .suc_uart = USART1,      
         .suc_rcc_reg = &RCC->APB2ENR,
         .suc_rcc_dev = RCC_APB2ENR_USART1EN,
-        .suc_pin_tx = BSP_UART_0_TX, //ok
-        .suc_pin_rx = BSP_UART_0_RX, //ok
-        .suc_pin_rts = -1,
-        .suc_pin_cts = -1,
+        .suc_pin_tx = MYNEWT_VAL(UART_0_PIN_TX),
+        .suc_pin_rx = MYNEWT_VAL(UART_0_PIN_RX),
+        .suc_pin_rts = MYNEWT_VAL(UART_0_PIN_RTS),
+        .suc_pin_cts = MYNEWT_VAL(UART_0_PIN_CTS),
         .suc_pin_af = GPIO_AF7_USART1,
         .suc_irqn = USART1_IRQn
-    }
 };
 #endif
 
-// UartDbg is bitbang on a gpio
-#if MYNEWT_VAL(UART_DBG)
-static struct uart_dev hal_uartdbg;
-static const struct uart_bitbang_conf uartdbg_cfg = {
-    .ubc_rxpin = BSP_UART_DBG_RX,
-    .ubc_txpin = BSP_UART_DBG_TX,
-    .ubc_cputimer_freq = MYNEWT_VAL(OS_CPUTIME_FREQ),
-};
-#endif
+
+/* UartDbg is bitbang on a gpio - initialised by the bitbang package in sysinit */
 
 #if MYNEWT_VAL(ADC) 
 /*static struct acd_dev hal_adc_dev;
@@ -122,8 +115,8 @@ static const struct stm32_adc_dev_cfg adc_cfg = {
 static struct bus_i2c_dev bus_i2c0;
 static struct bus_i2c_dev_cfg cfg_i2c0 = {
     .i2c_num = 0,
-    .pin_sda = I2C_0_SDA,
-    .pin_scl = I2C_0_SCL,
+    .pin_sda = MYNEWT_VAL(I2C_0_PIN_SDA),   //I2C_0_SDA,
+    .pin_scl = MYNEWT_VAL(I2C_0_PIN_SCL),   //I2C_0_SCL,
 };
 static struct bus_i2c_node node_alti;
 static struct bus_i2c_node_cfg cfg_alti = {
@@ -143,12 +136,12 @@ static struct bus_i2c_node_cfg cfg_acc = {
 };
 #else   /* USE_BUS_I2C */
 // Note: I2C0 is I2C1 in STM32 doc hence names of defns from HAL
-static struct stm32_hal_i2c_cfg i2c0_cfg = {
+struct stm32_hal_i2c_cfg os_bsp_i2c0_cfg = {
     .hic_i2c = I2C1,
     .hic_rcc_reg = &RCC->APB1ENR,
     .hic_rcc_dev = RCC_APB1ENR_I2C1EN,
-    .hic_pin_sda = I2C_0_SDA,         // ok
-    .hic_pin_scl = I2C_0_SCL,         // ok
+    .hic_pin_sda = MYNEWT_VAL(I2C_0_PIN_SDA),   // I2C_0_SDA,         // ok
+    .hic_pin_scl = MYNEWT_VAL(I2C_0_PIN_SCL),   //I2C_0_SCL,         // ok
     .hic_pin_af = GPIO_AF4_I2C1,
     .hic_10bit = 0,
     .hic_speed = I2C_0_FREQUENCY                     // 100kHz 
@@ -159,20 +152,20 @@ static struct stm32_hal_i2c_cfg i2c0_cfg = {
 
 // SPI0 (mynewt) refers to SPI1 in STM32 doc
 #if MYNEWT_VAL(SPI_0_SLAVE) || MYNEWT_VAL(SPI_0_MASTER)
-struct stm32_hal_spi_cfg spi0_cfg = {
-    .ss_pin   = SPI_0_MASTER_PIN_NSS, 
-    .sck_pin  = SPI_0_MASTER_PIN_SCK,
-    .miso_pin = SPI_0_MASTER_PIN_MISO,
-    .mosi_pin = SPI_0_MASTER_PIN_MOSI, 
+struct stm32_hal_spi_cfg os_bsp_spi0_cfg = {
+    .sck_pin = MYNEWT_VAL(SPI_0_PIN_SCK),
+    .mosi_pin = MYNEWT_VAL(SPI_0_PIN_MOSI),
+    .miso_pin = MYNEWT_VAL(SPI_0_PIN_MISO),
+    .ss_pin = MYNEWT_VAL(SPI_0_PIN_SS),
     .irq_prio = SPI_0_IRQ_PRIO,
 };
 #endif
 #if MYNEWT_VAL(SPI_1_SLAVE) || MYNEWT_VAL(SPI_1_MASTER)
-struct stm32_hal_spi_cfg spi1_cfg = {
-    .ss_pin   = SPI_1_MASTER_PIN_NSS,      
-    .sck_pin  = SPI_1_MASTER_PIN_SCK,     
-    .miso_pin = SPI_1_MASTER_PIN_MISO, 
-    .mosi_pin = SPI_1_MASTER_PIN_MOSI, 
+struct stm32_hal_spi_cfg os_bsp_spi1_cfg = {
+    .sck_pin = MYNEWT_VAL(SPI_1_PIN_SCK),
+    .mosi_pin = MYNEWT_VAL(SPI_1_PIN_MOSI),
+    .miso_pin = MYNEWT_VAL(SPI_1_PIN_MISO),
+    .ss_pin = MYNEWT_VAL(SPI_1_PIN_SS),
     .irq_prio = SPI_1_IRQ_PRIO,
 };
 #endif
@@ -212,7 +205,7 @@ hal_bsp_core_dump(int *area_cnt)
     *area_cnt = sizeof(dump_cfg) / sizeof(dump_cfg[0]);
     return dump_cfg;
 }
-
+#if 0
 static void
 clock_config(void)
 {
@@ -267,6 +260,7 @@ clock_config(void)
     }
 #endif
 }
+#endif
 
 void
 hal_bsp_init(void)
@@ -275,31 +269,24 @@ hal_bsp_init(void)
 
     (void)rc;
 
-    clock_config();
+//    clock_config();
 
 #if MYNEWT_VAL(UART_0)
     rc = os_dev_create((struct os_dev *) &hal_uart0, UART0_DEV,
-      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&uart_cfg[0]);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(UART_DBG)
-    assert(BSP_UART_DBG_TX!=-1);        // mst define at least tx pin
-    rc = os_dev_create((struct os_dev *) &hal_uartdbg, UARTDBG_DEV,
-      OS_DEV_INIT_PRIMARY, 0, uart_bitbang_init, (void *)&uartdbg_cfg);
+      OS_DEV_INIT_PRIMARY, 0, uart_hal_init, (void *)&os_bsp_uart0_cfg);
     assert(rc == 0);
 #endif
 
 #if MYNEWT_VAL(TIMER_0)
-    hal_timer_init(0, TIM2);
+    hal_timer_init(0, MYNEWT_VAL(TIMER_0_TIM));
 #endif
 
-#if MYNEWT_VAL(TIMER_1)
-    hal_timer_init(1, TIM3);
+#if MYNEWT_VAL(TIMER_1)    
+    hal_timer_init(1, MYNEWT_VAL(TIMER_1_TIM));
 #endif
 
 #if MYNEWT_VAL(TIMER_2)
-    hal_timer_init(2, TIM4);
+    hal_timer_init(2, MYNEWT_VAL(TIMER_2_TIM));
 #endif
 
 #if (MYNEWT_VAL(OS_CPUTIME_TIMER_NUM) >= 0)
@@ -315,35 +302,9 @@ hal_bsp_init(void)
     */
 #endif
 
-// note : SPI0 is SPI1 in STM32 doc
-#if MYNEWT_VAL(SPI_0_MASTER)
-    rc = hal_spi_init(0, &spi0_cfg, HAL_SPI_TYPE_MASTER);
-    assert(rc == 0);
-#endif
+    rc = hal_bsp_init_spi();
+    assert(rc ==0);
 
-#if MYNEWT_VAL(SPI_0_SLAVE)
-    rc = hal_spi_init(0, &spi0_cfg, HAL_SPI_TYPE_SLAVE);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(SPI_1_MASTER)
-    // MyNewt numbers devices from 0
-    rc = hal_spi_init(1, &spi1_cfg, HAL_SPI_TYPE_MASTER);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(SPI_1_SLAVE)
-    rc = hal_spi_init(1, &spi1_cfg, HAL_SPI_TYPE_SLAVE);
-    assert(rc == 0);
-#endif
-
-#if MYNEWT_VAL(RTC)
-    rc = hal_rtc_init(&rtc_cfg);
-    assert(rc == 0);
-#endif
-
-// Note I2C0 is I2C1 in STM32 doc
-#if MYNEWT_VAL(I2C_0)
     rc = hal_bsp_init_i2c();
     assert(rc ==0);
     // only init i2c here if using bus driver - else the i2c is init/deinit() on each usage
@@ -361,7 +322,7 @@ hal_bsp_init(void)
                     &cfg_acc, &(cfg_acc.node_cfg));
     assert(rc == 0);
 #endif /* USE_BUS_I2C */
-#endif
+
 }
 
 /**
@@ -381,7 +342,91 @@ hal_bsp_get_nvic_priority(int irq_num, uint32_t pri)
 }
 
 
-#if MYNEWT_VAL(I2C_0) || MYNEWT_VAL(I2C_1) || MYNEWT_VAL(I2C_2)
+int hal_bsp_init_spi(void) {
+
+    int rc=0;
+
+// note : SPI0 is SPI1 in STM32 doc
+#if MYNEWT_VAL(SPI_0_MASTER)
+    rc = hal_spi_init(0, &os_bsp_spi0_cfg, HAL_SPI_TYPE_MASTER);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(SPI_0_SLAVE)
+    rc = hal_spi_init(0, &os_bsp_spi0_cfg, HAL_SPI_TYPE_SLAVE);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(SPI_1_MASTER)
+    // MyNewt numbers devices from 0
+    rc = hal_spi_init(1, &os_bsp_spi1_cfg, HAL_SPI_TYPE_MASTER);
+    assert(rc == 0);
+#endif
+
+#if MYNEWT_VAL(SPI_1_SLAVE)
+    rc = hal_spi_init(1, &os_bsp_spi1_cfg, HAL_SPI_TYPE_SLAVE);
+    assert(rc == 0);
+#endif
+    return rc;
+
+/*ANOTHER DEINIT METHOD */
+/*
+#if MYNEWT_VAL(SPI_0_MASTER) || MYNEWT_VAL(SPI_0_SLAVE)
+    hal_spi_enable(0);
+#endif
+
+#if MYNEWT_VAL(SPI_1_MASTER) || MYNEWT_VAL(SPI_1_SLAVE)
+    hal_spi_enable(1);
+#endif
+*/
+
+}
+
+int hal_bsp_deinit_spi(void){
+
+// note : SPI0 is SPI1 in STM32 doc
+#if MYNEWT_VAL(SPI_0_SLAVE) || MYNEWT_VAL(SPI_0_MASTER)
+    
+    __HAL_RCC_SPI1_FORCE_RESET();
+    __HAL_RCC_SPI1_RELEASE_RESET();
+    __HAL_RCC_SPI1_CLK_DISABLE( );
+
+    hal_gpio_deinit(os_bsp_spi0_cfg.ss_pin);
+    hal_gpio_init_in(os_bsp_spi0_cfg.ss_pin, HAL_GPIO_PULL_UP);
+
+    hal_gpio_deinit(os_bsp_spi0_cfg.sck_pin);
+    hal_gpio_init_in(os_bsp_spi0_cfg.sck_pin, HAL_GPIO_PULL_DOWN);
+    
+    hal_gpio_deinit(os_bsp_spi0_cfg.miso_pin);
+    hal_gpio_init_in(os_bsp_spi0_cfg.miso_pin, HAL_GPIO_PULL_DOWN);
+
+    hal_gpio_deinit(os_bsp_spi0_cfg.mosi_pin);
+    hal_gpio_init_in(os_bsp_spi0_cfg.mosi_pin, HAL_GPIO_PULL_DOWN);
+
+#endif
+
+#if MYNEWT_VAL(SPI_1_SLAVE) || MYNEWT_VAL(SPI_1_MASTER)
+    
+    __HAL_RCC_SPI2_FORCE_RESET();
+    __HAL_RCC_SPI2_RELEASE_RESET();
+    __HAL_RCC_SPI2_CLK_DISABLE( );
+
+    hal_gpio_deinit(os_bsp_spi1_cfg.ss_pin);
+    hal_gpio_init_in(os_bsp_spi1_cfg.ss_pin, HAL_GPIO_PULL_UP);
+
+    hal_gpio_deinit(os_bsp_spi1_cfg.sck_pin);
+    hal_gpio_init_in(os_bsp_spi1_cfg.sck_pin, HAL_GPIO_PULL_DOWN);
+    
+    hal_gpio_deinit(os_bsp_spi1_cfg.miso_pin);
+    hal_gpio_init_in(os_bsp_spi1_cfg.miso_pin, HAL_GPIO_PULL_DOWN);
+
+    hal_gpio_deinit(os_bsp_spi1_cfg.mosi_pin);
+    hal_gpio_init_in(os_bsp_spi1_cfg.mosi_pin, HAL_GPIO_PULL_DOWN);
+
+#endif
+    return 0;
+}
+
 #if MYNEWT_VAL(USE_BUS_I2C)
 // need these as STM32 MCU HAL code does NOT define them, and the I2C mynewt driver code requires them
 int hal_i2c_disable(uint8_t n) {
@@ -398,37 +443,42 @@ int hal_i2c_config(uint8_t i2c_num, const struct hal_i2c_settings *cfg) {
     return 0;
 }
 #endif /* USE_BUS_I2C */
+
 // initialise I2C
 int hal_bsp_init_i2c() {
     int rc = 0;
 #if MYNEWT_VAL(I2C_0)
-    rc = hal_i2c_init(0, &i2c0_cfg);
+    rc = hal_i2c_init(0, &os_bsp_i2c0_cfg);
 #endif
 #if MYNEWT_VAL(I2C_1)
-    rc = hal_i2c_init(1, &i2c1_cfg);
+    rc = hal_i2c_init(1, &os_bsp_i2c1_cfg);
 #endif
 #if MYNEWT_VAL(I2C_2)
-    rc = hal_i2c_init(2, &i2c2_cfg);
+    rc = hal_i2c_init(2, &os_bsp_i2c2_cfg);
 #endif
     return rc;
 }
 // deinit for power saving
 int hal_bsp_deinit_i2c() {
-    int rc = 0;
+    
 #if MYNEWT_VAL(I2C_0)
-    // no hal fn to deinit currently... TODO
-//    rc = hal_i2c_deinit(0, &i2c0_cfg);
-#endif
-#if MYNEWT_VAL(I2C_1)
-    rc = hal_i2c_deinit(1, &i2c1_cfg);
-#endif
-#if MYNEWT_VAL(I2C_2)
-    rc = hal_i2c_deinit(2, &i2c2_cfg);
-#endif
-    return rc;
-}
+
+    __HAL_RCC_I2C1_FORCE_RESET();
+    __HAL_RCC_I2C1_RELEASE_RESET();
+    __HAL_RCC_I2C1_CLK_DISABLE( );
+
+#if 0
+    /*deinit is not done properly because of this : */
+    hal_gpio_deinit(os_bsp_i2c0_cfg.hic_pin_sda);
+    hal_gpio_init_in(os_bsp_i2c0_cfg.hic_pin_sda, HAL_GPIO_PULL_UP);
+    
+    hal_gpio_deinit(os_bsp_i2c0_cfg.hic_pin_scl);
+   	hal_gpio_init_in(os_bsp_i2c0_cfg.hic_pin_scl, HAL_GPIO_PULL_UP);    
 #endif
 
+#endif
+    return 0;
+}
 
 // NVM access - we have a EEPROM on this MCU which is handy
 uint16_t hal_bsp_nvmSize() {
@@ -515,21 +565,7 @@ void BSP_antSwRx(int txPin, int rxPin) {
     }
 }
 
-/**
- * Move the system into the specified power state
- *
- * @param state The power state to move the system into, this is one of
- *                 * HAL_BSP_POWER_ON: Full system on
- *                 * HAL_BSP_POWER_WFI: Processor off, wait for interrupt.
- *                 * HAL_BSP_POWER_SLEEP: Put the system to sleep
- *                 * HAL_BSP_POWER_DEEP_SLEEP: Put the system into deep sleep.
- *                 * HAL_BSP_POWER_OFF: Turn off the system.
- *                 * HAL_BSP_POWER_PERUSER: From this value on, allow user
- *                   defined power states.
- *
- * @return 0 on success, non-zero if system cannot move into this power state.
- */
-//int hal_bsp_power_state(int state);
+
 
 #if MYNEWT_VAL(ADC) 
 // Initialise an adc for basic gpio like use
@@ -676,3 +712,174 @@ void hal_bsp_adc_release(int pin, int chan) {
 void hal_bsp_adc_deinit() {
 }
 #endif  /* ADC */
+
+
+void hal_bsp_uart_init(void)
+{
+#if MYNEWT_VAL(UART_0)
+    __HAL_RCC_USART1_RELEASE_RESET( );
+    __HAL_RCC_USART1_RELEASE_RESET( );
+    __HAL_RCC_USART1_CLK_ENABLE( );
+
+    hal_gpio_deinit(os_bsp_uart0_cfg.suc_pin_tx);
+    hal_gpio_init_af(os_bsp_uart0_cfg.suc_pin_tx, os_bsp_uart0_cfg.suc_pin_af, 0, 0);
+    
+    hal_gpio_deinit(os_bsp_uart0_cfg.suc_pin_rx);
+    hal_gpio_init_af(os_bsp_uart0_cfg.suc_pin_rx, os_bsp_uart0_cfg.suc_pin_af, 0, 0);
+#endif
+}
+
+
+void hal_bsp_uart_deinit(void)
+{
+#if MYNEWT_VAL(UART_0)
+    // Uart0 is UART1 in STM32 doc hence names of HAL defns
+    GPIO_InitTypeDef highz_cfg = {
+        .Mode = GPIO_MODE_ANALOG,
+        .Pull = GPIO_NOPULL
+    };
+
+    __HAL_RCC_USART1_FORCE_RESET( );
+    __HAL_RCC_USART1_RELEASE_RESET( );
+    __HAL_RCC_USART1_CLK_DISABLE( );
+
+    hal_gpio_deinit(os_bsp_uart0_cfg.suc_pin_tx);
+    highz_cfg.Pin = os_bsp_uart0_cfg.suc_pin_tx;
+    highz_cfg.Alternate = os_bsp_uart0_cfg.suc_pin_tx;
+    hal_gpio_init_stm(highz_cfg.Pin, &highz_cfg);
+    
+    hal_gpio_deinit(os_bsp_uart0_cfg.suc_pin_rx);
+    highz_cfg.Pin = os_bsp_uart0_cfg.suc_pin_rx;
+    highz_cfg.Alternate = os_bsp_uart0_cfg.suc_pin_rx;
+    hal_gpio_init_stm(highz_cfg.Pin, &highz_cfg);
+#endif //MYNEWT_VAL(UART_0)
+}
+
+/** enter a MCU stop mode, with all periphs off or lowest possible power, and never return */
+void hal_bsp_halt() {
+      
+    //tell lowpowermgr to deinit stuff
+    hal_bsp_power_handler_sleep_enter(HAL_BSP_POWER_DEEP_SLEEP);
+
+    // ask MCU HAL to stop it
+    hal_mcu_halt();
+}
+
+#if MYNEWT_VAL(BSP_POWER_SETUP)
+
+static LP_HOOK_t _hook_get_mode_cb=NULL;
+static LP_HOOK_t _hook_exit_cb=NULL;
+static LP_HOOK_t _hook_enter_cb=NULL;
+
+/* hook idle enter/exit phases. 
+ * Note the get_mode call is made with irq disabled in OS critical section - so don't hang about
+ * enter/exit are called outside of the critical region
+ * */
+void hal_bsp_power_hooks(LP_HOOK_t getMode, LP_HOOK_t enter, LP_HOOK_t exit)
+{
+    // Should only have 1 hook of sleeping in the code, so assert if called twice
+    assert(_hook_enter_cb==NULL);
+    _hook_get_mode_cb = getMode;
+    _hook_enter_cb = enter;
+    _hook_exit_cb = exit;
+}
+
+/* the 2 following functions are called from hal_os_tick.c iff BSP_POWER_SETUP is set */
+/* get the required power sleep mode that the application wants to be in */
+int hal_bsp_power_handler_get_mode(os_time_t ticks)
+{
+    // ask to BSP for the appropriate power mode
+    return (_hook_get_mode_cb!=NULL)?(*_hook_get_mode_cb)():HAL_BSP_POWER_WFI;
+}
+
+/* enter sleep - called before entering critical region */
+void hal_bsp_power_handler_sleep_enter(int nextMode)
+{
+    if (_hook_enter_cb!=NULL) {
+        (*_hook_enter_cb)();
+    }
+
+    /* Now BSP deinit                      */
+    /* shared bus interfaces               */
+    switch(nextMode) {
+        
+        case HAL_BSP_POWER_OFF:
+        case HAL_BSP_POWER_DEEP_SLEEP:
+        case HAL_BSP_POWER_SLEEP:
+          
+            /* I2S */
+            bsp_deinit_i2s();
+
+            /* I2C */
+            hal_bsp_deinit_i2c();
+
+            /* SPI */
+            hal_bsp_deinit_spi();
+
+            /*UART */
+            hal_bsp_uart_deinit();
+
+            break;
+        case HAL_BSP_POWER_WFI: 
+
+        case HAL_BSP_POWER_ON:
+        default:             
+           break;
+    }
+
+}
+
+/* exit sleep - called after exiting critical region */
+void hal_bsp_power_handler_sleep_exit(int lastMode)
+{
+    /* and tell hook */
+    if (_hook_exit_cb!=NULL) {
+        (*_hook_exit_cb)();
+    }
+
+    /* Now BSP must reinit                 */
+    /* shared bus interfaces               */
+    switch(lastMode) {
+        
+        case HAL_BSP_POWER_OFF:
+        case HAL_BSP_POWER_DEEP_SLEEP:
+        case HAL_BSP_POWER_SLEEP:
+     
+            /* I2S */
+            bsp_init_i2s();
+
+            /* I2C */         
+            hal_bsp_init_i2c();
+
+            /* SPI */
+            hal_bsp_init_spi();
+
+            /*UART */
+            hal_bsp_uart_init();
+
+            break;
+        case HAL_BSP_POWER_WFI: 
+
+        case HAL_BSP_POWER_ON:
+        default:             
+           break;
+    }
+}
+#else 
+void hal_bsp_power_hooks(LP_HOOK_t getMode, LP_HOOK_t enter, LP_HOOK_t exit) {
+    // noop
+    (void)getMode;
+    (void)enter;
+    (void)exit;
+}
+int hal_bsp_power_handler_get_mode(os_time_t ticks) {
+    return HAL_BSP_POWER_WFI;
+}
+void hal_bsp_power_handler_sleep_enter(int nextMode){
+
+}
+void hal_bsp_power_handler_sleep_exit(int lastMode){
+    
+}
+
+#endif

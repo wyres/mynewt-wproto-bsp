@@ -30,7 +30,6 @@ extern "C" {
 
 
 /* UART */
-#define UART_CNT 1
 // mynewt device name to access uarts. Note name is mynewt, STM32 doc pin labelling has UART1/2/3
 #define UART0_DEV "uart0"
 #define UART1_DEV "uart1"
@@ -75,19 +74,20 @@ extern "C" {
 #define ACCELERO_I2C_ADDR  0x19
 
 //#define Microphone IIS config?
+#define I2C_0_FREQUENCY (100000)
+#define SPI_0_IRQ_PRIO (2)
+#define SPI_0_BAUDRATE (3000)
 
+#if 0
 // I2C0 is first I2C on STM32 (called I2C1 in pinout doc)
 #define I2C_0_SDA       MCU_GPIO_PORTB(9)          // No ADC
 #define I2C_0_SCL       MCU_GPIO_PORTB(8)           // No ADC
-#define I2C_0_FREQUENCY (100000)
 
 // SPI0 is mynewt numbering, but SPI1 is STM32 name for first SPI. 
 #define SPI_0_MASTER_PIN_MOSI MCU_GPIO_PORTA(7)
 #define SPI_0_MASTER_PIN_MISO MCU_GPIO_PORTA(6)
 #define SPI_0_MASTER_PIN_SCK MCU_GPIO_PORTA(5)
 #define SPI_0_MASTER_PIN_NSS  MCU_GPIO_PORTB(0)
-#define SPI_0_IRQ_PRIO (2)
-#define SPI_0_BAUDRATE (3000)
 
 // ditto for UART
 #define BSP_UART_0_TX MCU_GPIO_PORTA(9)             // No ADC
@@ -96,6 +96,7 @@ extern "C" {
 // debug uart does bitbang on a gpio (optional)
 #define BSP_UART_DBG_TX MYNEWT_VAL(UART_DBG_TX)
 #define BSP_UART_DBG_RX MYNEWT_VAL(UART_DBG_RX)
+#endif
 
 #ifdef __cplusplus
 }

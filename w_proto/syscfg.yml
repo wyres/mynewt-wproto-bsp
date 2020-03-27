@@ -43,22 +43,6 @@ syscfg.defs:
         description: 'Total flash size in KB.'
         value: 256
 
-    UART_0:
-        description: 'UART 0 (STM32 uart1) enabled'
-        value:  1
-
-    TIMER_0:
-        description: 'Timer 0 (timer2 in STM in fact, used by OS)'
-        value:  1
-
-    TIMER_1:
-        description: 'Timer 1'
-        value:  0
-
-    TIMER_2:
-        description: 'Timer 2'
-        value:  0
-
     USE_BUS_I2C:
         description: "use bus driver type access for I2C or hal?"
         value: 0
@@ -100,12 +84,38 @@ syscfg.vals:
     # timer for OS to use by default in the BSP : Timer0
     OS_CPUTIME_TIMER_NUM: 0
 
+    # enable/disable STM32 periphs
+    UART_0 : 1
+    UART_1 : 0
+    UART_2 : 0    
+    # Timer 0 is enabled but not used directly
+    TIMER_0 : 1
+    TIMER_1 : 0
+    TIMER_2 : 0
     # enable I2C0 (STM32 doc I2C1)
     I2C_0: 1
-
     # enabled SPI0 (STM32 doc SPI1) as master
     SPI_0_MASTER: 1
     SPI_1_MASTER: 0
+
+    # pin layouts
+    UART_0_PIN_TX: 'MCU_GPIO_PORTA(9)'
+    UART_0_PIN_RX: 'MCU_GPIO_PORTA(10)'
+    UART_0_PIN_CTS: -1
+    UART_0_PIN_RTS: -1
+
+    SPI_0_PIN_MOSI: 'MCU_GPIO_PORTA(7)'
+    SPI_0_PIN_MISO: 'MCU_GPIO_PORTA(6)'
+    SPI_0_PIN_SCK: 'MCU_GPIO_PORTA(5)'
+    SPI_0_PIN_SS: 'MCU_GPIO_PORTB(0)'
+
+    SPI_1_PIN_MISO : 'MCU_GPIO_PORTB(14)'
+    SPI_1_PIN_SS : 'MCU_GPIO_PORTB(12)'
+
+    I2C_0_PIN_SDA: 'MCU_GPIO_PORTB(9)'
+    I2C_0_PIN_SCL: 'MCU_GPIO_PORTB(8)'
+
+    TIMER_0_TIM: 'TIM2'
 
     # W_BASE v2 card hardware
 #    LED1 : PA_0
