@@ -205,71 +205,11 @@ hal_bsp_core_dump(int *area_cnt)
     *area_cnt = sizeof(dump_cfg) / sizeof(dump_cfg[0]);
     return dump_cfg;
 }
-#if 0
-static void
-clock_config(void)
-{
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
-    RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
-
-    /* Enable HSI Oscillator and Activate PLL with HSI as source */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-    RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-    RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL6;
-    RCC_OscInitStruct.PLL.PLLDIV = RCC_PLL_DIV3;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-        assert(0);
-    }
-
-    /* Set Voltage scale1 as MCU will run at 32MHz */
-    __HAL_RCC_PWR_CLK_ENABLE();
-    __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
-    /* Poll VOSF bit of in PWR_CSR. Wait until it is reset to 0 */
-    while (__HAL_PWR_GET_FLAG(PWR_FLAG_VOS) != RESET) ;
-
-    /*
-     * Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2
-     * clocks dividers
-     */
-    RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | \
-                                   RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
-    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
-    RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_1) != HAL_OK) {
-        assert(0);
-    }
-    
-
-#if MYNEWT_VAL(I2C_0) || MYNEWT_VAL(RTC) || MYNEWT_VAL(RNG)
-    RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-
-#if MYNEWT_VAL(RTC)
-     PeriphClkInit.PeriphClockSelection |= RCC_PERIPHCLK_RTC;
-     PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSE;
-#endif
-
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
-    {
-        assert(0);
-    }
-#endif
-}
-#endif
 
 void
 hal_bsp_init(void)
 {
     int rc;
-
-    (void)rc;
-
-//    clock_config();
 
 #if MYNEWT_VAL(UART_0)
     rc = os_dev_create((struct os_dev *) &hal_uart0, UART0_DEV,
@@ -544,25 +484,14 @@ void BSP_antSwDeInit(int txPin, int rxPin) {
 void BSP_antSwTx(int txPin, int rxPin) {
     assert(txPin!=-1);
     assert(rxPin!=-1);
-    if (BSP_getHwVer()<2) {     // proto or revB
-        hal_gpio_write(txPin, 1);
-        hal_gpio_write(rxPin, 0);
-    } else {
-        hal_gpio_write(txPin, 0);
-        hal_gpio_write(rxPin, 1);
-    }
+    hal_gpio_write(txPin, 1);
+    hal_gpio_write(rxPin, 0);
 }
 void BSP_antSwRx(int txPin, int rxPin) {
     assert(txPin!=-1);
     assert(rxPin!=-1);
-    if (BSP_getHwVer()<2) {     // proto or revB
-        hal_gpio_write(txPin, 0);
-        hal_gpio_write(rxPin, 1);
-    } else {
-        hal_gpio_write(txPin, 1);
-        hal_gpio_write(rxPin, 1);
-
-    }
+    hal_gpio_write(txPin, 0);
+    hal_gpio_write(rxPin, 1);
 }
 
 
@@ -584,6 +513,14 @@ bool hal_bsp_adc_init() {
     if (!_adc1.active) {
         // Configure ADC
         ADC_HandleTypeDef* adch = &_adc1.adcHandle;
+
+#if MYNEWT_VAL(STM32_CLOCK_HSE)
+        // Enable HSI - already done in clock setup
+        __HAL_RCC_HSI_ENABLE( );
+
+        // Wait till HSI is ready
+        while( __HAL_RCC_GET_FLAG( RCC_FLAG_HSIRDY ) == RESET );
+#endif
         __HAL_RCC_ADC1_CLK_ENABLE( );
         // First ensure its is in known state (seems odd but if you don't do this then the init fails)
         HAL_ADC_DeInit( adch );
@@ -603,15 +540,7 @@ bool hal_bsp_adc_init() {
         if (rc!=HAL_OK) {
             return false;   // thats a fail
         }
-        // Enable HSI - already done in clock setup
-        /* 
-        __HAL_RCC_HSI_ENABLE( );
-
-        // Wait till HSI is ready
-        while( __HAL_RCC_GET_FLAG( RCC_FLAG_HSIRDY ) == RESET )
-        {
-        }
-        */
+        
         // Enable ADC1
         __HAL_ADC_ENABLE( adch );
 
@@ -646,9 +575,6 @@ bool hal_bsp_adc_define(int pin, int chan) {
     return (rc==HAL_OK);
 }
 
-#define ADC_MAX_VALUE                               4095    // 12 bits max value
-// Should read the factory calibrated vref from the eerom at 0x1FF8 00F8/9
-#define ADC_VREF_BANDGAP                            1224    // vRef in mV for ADC
 
 
 int hal_bsp_adc_read(int channel) {
@@ -666,6 +592,7 @@ int hal_bsp_adc_read(int channel) {
     HAL_ADC_PollForConversion(adch, HAL_MAX_DELAY);
 
     adcData = HAL_ADC_GetValue(adch);
+    
     return (uint16_t)adcData;
 }
 
@@ -685,8 +612,10 @@ void hal_bsp_adc_deinit() {
         // Stop its clock
         __HAL_RCC_ADC1_CLK_DISABLE( );
 
+#if MYNEWT_VAL(STM32_CLOCK_HSE)
         // Disable HSI - no, required for system clock
-//        __HAL_RCC_HSI_DISABLE( );
+        __HAL_RCC_HSI_DISABLE( );
+#endif
 
         HAL_ADC_DeInit( adch );
         _adc1.active = false;

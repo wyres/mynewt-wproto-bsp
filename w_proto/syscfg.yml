@@ -53,7 +53,8 @@ syscfg.defs:
 
     ADC:
         description: "ADC use actived (including battery check)"
-        value: 0
+        value: 1
+
     ADC_DEV:
         description: "name of adc mynewt device : currently not used as no mynewt driver for adc for STM32L1"
         value: 'ADC'
@@ -72,18 +73,19 @@ syscfg.defs:
         value: 19200
 
     BSP_HW_REV:
-        description: "version of base card: 1=revB, 2=revC, 3=revD"
-        value: 2
+        description: "version of base card: 0=proto"
+        value: 0
         
+    BSP_POWER_SETUP:
+        description: "allow or not the general power mode to be handled from mcu and bsp layers"
+        value: 1
+
+    OS_TICKLESS_RTC:
+        description: "use tickless mode when sleeping with the RTC to wakeup. Requires MCU RTC support."
+        value: 1
+
     # overwrite/set module required card specific hardware mappings
 syscfg.vals:
-    REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
-    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
-    NFFS_FLASH_AREA: FLASH_AREA_NFFS
-    COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
-    # timer for OS to use by default in the BSP : Timer0
-    OS_CPUTIME_TIMER_NUM: 0
-
     # enable/disable STM32 periphs
     UART_0 : 1
     UART_1 : 0
@@ -117,37 +119,68 @@ syscfg.vals:
 
     TIMER_0_TIM: 'TIM2'
 
-    # W_BASE v2 card hardware
-#    LED1 : PA_0
-#    LED2 : PA_15
+    REBOOT_LOG_FLASH_AREA: FLASH_AREA_REBOOT_LOG
+#    CONFIG_FCB_FLASH_AREA: FLASH_AREA_NFFS
+    NFFS_FLASH_AREA: FLASH_AREA_NFFS
+#    COREDUMP_FLASH_AREA: FLASH_AREA_IMAGE_1
+    # timer for OS to use by default in the BSP : Timer0
+    OS_CPUTIME_TIMER_NUM: 0
 
-    # W_BASE v2 uses SX1272    
+    # minimum and maximum millisecs that proc will sleep for (related to max time the timer used for tickless mode can run for)
+    OS_IDLE_TICKLESS_MS_MIN: 100
+    OS_IDLE_TICKLESS_MS_MAX: 600000
+    # main stack size- reasonable as we use it for event execution for certain mgrs (uart etc)
+    OS_MAIN_STACK_SIZE: 512
+
+    OS_CRASH_RESTORE_REGS: 1
+
+    #system clock config with HSE (XTAL@16MHz, configured in stm32l1xx_hal_conf.h in the BSP)
+    STM32_CLOCK_VOLTAGESCALING_CONFIG: 'PWR_REGULATOR_VOLTAGE_SCALE1'
+    STM32_CLOCK_LSI: 0
+    STM32_CLOCK_LSE: 1
+    STM32_CLOCK_LSE_BYPASS: 0
+    STM32_CLOCK_MSI: 0
+    STM32_CLOCK_MSI_CALIBRATION: 0
+    STM32_CLOCK_MSI_CLOCK_RANGE: 'RCC_MSIRANGE_5'  # 2.097MHz
+    STM32_CLOCK_HSI: 0
+    STM32_CLOCK_HSI_CALIBRATION: 16
+    STM32_CLOCK_HSE: 1
+    STM32_CLOCK_HSE_BYPASS: 0
+    STM32_CLOCK_PLL_MUL: 'RCC_PLL_MUL4'  # HSE : 16 * 4 = 64MHz; 
+    STM32_CLOCK_PLL_DIV: 'RCC_PLL_DIV2'  # HSE : 64 / 2 = 32MHz;
+    STM32_CLOCK_AHB_DIVIDER: 'RCC_SYSCLK_DIV1'
+    STM32_CLOCK_APB1_DIVIDER: 'RCC_HCLK_DIV1'
+    STM32_CLOCK_APB2_DIVIDER: 'RCC_HCLK_DIV1'
+    STM32_FLASH_LATENCY: 1  # max 32MHz
+    STM32_FLASH_PREFETCH_ENABLE: 0
+    
+    
+    # W_PROTO uses SX1272    
     SX1272: 1
-    SX1272_DIO_0: PB_1
-    SX1272_DIO_1: PB_10
-    SX1272_DIO_2: PB_11
-    SX1272_DIO_3: PB_7
-    SX1272_DIO_4: PB_5
-    SX1272_DIO_5: PB_4
-    SX1272_NSS: PB_0
+    SX1272_DIO_0:  MCU_GPIO_PORTB(1)    # 'SX1272_PIN_DIO_0'
+    SX1272_DIO_1:  MCU_GPIO_PORTB(10) # 'SX1272_PIN_DIO_1'
+    SX1272_DIO_2:  MCU_GPIO_PORTB(11) # 'SX1272_PIN_DIO_2'
+    SX1272_DIO_3:  MCU_GPIO_PORTB(7) # 'SX1272_PIN_DIO_3'
+    SX1272_DIO_4:  MCU_GPIO_PORTB(5) # 'SX1272_PIN_DIO_4'
+    SX1272_DIO_5:  MCU_GPIO_PORTB(4) # 'SX1272_PIN_DIO_5'
+    SX1272_NSS:    MCU_GPIO_PORTB(0) # 'SX1272_PIN_NSS'
     # SPI_1 is STM32 naming, index is 0, this is an enum of value 0
     SX1272_SPI: SPI_1
     SX1272_SPI_IDX: 0
-    SX1272_RESET: PA_2
-
-    # W_BASE v3 uses SX126X
-    SX126X: 0
-    SX126X_XTAL_PINA: 0x1B
-    SX126X_XTAL_PINB: 0x1B
- 
-    SX126X_DIO_1: MCU_GPIO_PORTB(1)
-    SX126X_RADIO_BUSY: MCU_GPIO_PORTB(7)
-    SX126X_NSS: MCU_GPIO_PORTA(4)
-    SX126X_RESET: MCU_GPIO_PORTB(5)
-    SX126X_PWR_ENABLE: MCU_GPIO_PORTB(0)
+    SX1272_RESET:  MCU_GPIO_PORTA(2) # 'SX1272_PIN_RESET'
 
     # antenna rx/tx switch management is independant of the radio type 
     # code to manipulate these IO is in the BSP
-    RADIO_ANT_SWITCH_TX: PA_4
-    RADIO_ANT_SWITCH_RX: PC_13
+    RADIO_ANT_SWITCH_TX: MCU_GPIO_PORTA(4)  #PA_4
+    RADIO_ANT_SWITCH_RX: MCU_GPIO_PORTC(13) #PC_13
+    
+    # if enabled tickless mode, disable timer0 and uart dbg
+syscfg.vals.OS_TICKLESS_RTC:
+    OS_CPUTIME_TIMER_NUM: -1
+    UART_DBG : 0
+
+    # if enabled debug uart, cannot use tickless mode (as the bitbang uart timer is too disturbing), and need the cputime timer
+syscfg.vals.UART_DBG:
+    OS_TICKLESS_RTC: 0
+    OS_CPUTIME_TIMER_NUM: 0
 

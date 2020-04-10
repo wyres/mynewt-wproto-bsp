@@ -26,6 +26,13 @@
 extern "C" {
 #endif
 
+
+// Set os idle stack size here as we have callups from the os_tick_idle()
+#ifdef OS_IDLE_STACK_SIZE
+#undef OS_IDLE_STACK_SIZE
+#endif
+#define OS_IDLE_STACK_SIZE (128)
+
 // The board specific definitions in here for BSP supplied code.
 
 
@@ -44,19 +51,42 @@ extern "C" {
 
 /* GPIO  type pins */
 #define LED_1           MCU_GPIO_PORTA(0)       // also ADC input 0
-#define LED_2           MCU_GPIO_PORTA(15)      // No ADC
+#define LED_2           MCU_GPIO_PORTA(3)      // No ADC
 #define LED_BLINK_PIN   LED_1
 
-#define LIGHT_SENSOR    MCU_GPIO_PORTA(3)       // ADC channel 3
-#define LIGHT_SENSOR_ADCCHAN (ADC_CHANNEL_3)
-#define EXT_IO          MCU_GPIO_PORTA(8)       // No ADC
 
-#define EXT_BUTTON      MCU_GPIO_PORTB(3)       // No ADC
+// Maker connector
+#define CN4_1           MCU_GPIO_PORTB(15)
+#define CN4_2           MCU_GPIO_PORTA(12)
+#define CN4_3           MCU_GPIO_PORTB(14)
+#define CN4_4           MCU_GPIO_PORTA(11)
+#define CN4_5           MCU_GPIO_PORTB(13)
+#define CN4_6           -1                      // UART RX - DNU
+#define CN4_7           MCU_GPIO_PORTB(12)
+#define CN4_8           -1                      // UART TX - DNU
+#define CN4_9           -1                      // GND
+#define CN4_10          -1                      // I2C1 SCL - DNU
+#define CN4_11          MCU_GPIO_PORTA(1)
+#define CN4_12          -1                      // I2C SDA - DNU
+
+#define SENSOR_PWR      MCU_GPIO_PORTB(6)       // microphone power supply
+#define IRQ_ACCEL       MCU_GPIO_PORTA(8)       // irq from accelero
+
+// Map to 'default' function defines for ext io functions if used
+#define EXT_LED         (CN4_1)
+#define EXT_RELAY1      (CN4_2)
+#define EXT_IO          (CN4_3)
+#define EXT_RELAY2      (CN4_4)
+#define EXT_BUTTON      (CN4_7)
 #define BUTTON          (EXT_BUTTON)
-#define SPEAKER         MCU_GPIO_PORTA(1)       // also ADC input 1
-#define EXT_UART_PWR    MCU_GPIO_PORTA(11)      // No ADC
-#define EXT_I2C_PWR     MCU_GPIO_PORTA(12)      // No ADC
-#define SENSOR_PWR      MCU_GPIO_PORTB(6)       // No ADC
+// Speaker output PWM drives mosfet for higher power output on speaker connecter also. If no speaker connected, can use as GPIO
+#define SPEAKER         (CN4_11)
+#define EXT_UART_PWR    -1
+#define EXT_I2C_PWR     -1
+#define LIGHT_SENSOR    -1
+#define LIGHT_SENSOR_ADCCHAN (-1)
+
+/* JTAG on PB3/PA15/PA14/PA13 */
 
 #define BATTERY_GPIO    (128)                   // needs a gpio pin number, but of a value that is beyond 'real' ones
 #define BATTERY_ADCCHAN (ADC_CHANNEL_VREFINT)
@@ -77,26 +107,6 @@ extern "C" {
 #define I2C_0_FREQUENCY (100000)
 #define SPI_0_IRQ_PRIO (2)
 #define SPI_0_BAUDRATE (3000)
-
-#if 0
-// I2C0 is first I2C on STM32 (called I2C1 in pinout doc)
-#define I2C_0_SDA       MCU_GPIO_PORTB(9)          // No ADC
-#define I2C_0_SCL       MCU_GPIO_PORTB(8)           // No ADC
-
-// SPI0 is mynewt numbering, but SPI1 is STM32 name for first SPI. 
-#define SPI_0_MASTER_PIN_MOSI MCU_GPIO_PORTA(7)
-#define SPI_0_MASTER_PIN_MISO MCU_GPIO_PORTA(6)
-#define SPI_0_MASTER_PIN_SCK MCU_GPIO_PORTA(5)
-#define SPI_0_MASTER_PIN_NSS  MCU_GPIO_PORTB(0)
-
-// ditto for UART
-#define BSP_UART_0_TX MCU_GPIO_PORTA(9)             // No ADC
-#define BSP_UART_0_RX MCU_GPIO_PORTA(10)            // No ADC
-
-// debug uart does bitbang on a gpio (optional)
-#define BSP_UART_DBG_TX MYNEWT_VAL(UART_DBG_TX)
-#define BSP_UART_DBG_RX MYNEWT_VAL(UART_DBG_RX)
-#endif
 
 #ifdef __cplusplus
 }
