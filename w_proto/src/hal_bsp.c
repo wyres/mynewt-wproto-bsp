@@ -737,7 +737,7 @@ void hal_bsp_power_handler_sleep_enter(int nextMode)
         case HAL_BSP_POWER_SLEEP:
           
             /* I2S */
-            bsp_deinit_i2s();
+//            bsp_deinit_i2s();
 
             /* I2C */
             hal_bsp_deinit_i2c();
@@ -775,7 +775,7 @@ void hal_bsp_power_handler_sleep_exit(int lastMode)
         case HAL_BSP_POWER_SLEEP:
      
             /* I2S */
-            bsp_init_i2s();
+//            bsp_init_i2s();
 
             /* I2C */         
             hal_bsp_init_i2c();
